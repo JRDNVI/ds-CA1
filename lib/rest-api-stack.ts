@@ -5,7 +5,6 @@ import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as custom from "aws-cdk-lib/custom-resources";
 import { Construct } from "constructs";
 import * as apig from "aws-cdk-lib/aws-apigateway";
-// import * as sqs from 'aws-cdk-lib/aws-sqs';
 import { generateGameBatch } from "../shared/util";
 import { games } from "../seed/games";
 
@@ -52,6 +51,18 @@ export class RestAPIStack extends cdk.Stack {
         },
       }
       );
+
+      const newGameFn = new lambdanode.NodejsFunction(this, "AddGameFn", {
+        architecture: lambda.Architecture.ARM_64,
+        runtime: lambda.Runtime.NODEJS_16_X,
+        entry: `${__dirname}/../lambdas/addGame.ts`,
+        timeout: cdk.Duration.seconds(10),
+        memorySize: 128,
+        environment: {
+          TABLE_NAME: gamesTable.tableName,
+          REGION: "eu-west-1",
+        },
+      });
         
         const api = new apig.RestApi(this, "RestAPI", {
           description: "demo api",
@@ -67,8 +78,14 @@ export class RestAPIStack extends cdk.Stack {
         });
 
         gamesTable.grantReadData(getGameByIdFn)
+        gamesTable.grantReadWriteData(newGameFn)
 
         const gamesEndpoint = api.root.addResource("games");
+        gamesEndpoint.addMethod(
+          "POST",
+          new apig.LambdaIntegration(newGameFn, { proxy: true })
+        )
+        
         const gameEndpoint = gamesEndpoint.addResource("{gameId}");
         gameEndpoint.addMethod(
           "GET",
