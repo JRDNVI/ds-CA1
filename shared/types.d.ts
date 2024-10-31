@@ -1,20 +1,14 @@
-// export type Language = 'English' | 'Frenc
+export type Language = 'English' | 'French'
 
-export type Movie =   {
-  id: number,
-  backdrop_path: string,
-  genre_ids: number[ ],
-  original_language: string,
-  original_title: string,
-  adult: boolean,
-  overview: string,
-  popularity: number,
-  poster_path: string,
-  release_date: string,
-  title: string,
-  video: boolean,
-  vote_average: number,
-  vote_count: number
+export type Game = {
+  id: Number,
+  version: Number,
+  title: String,
+  description: String,
+  rating: Number,
+  genre: String,
+  developer: String,
+  adult: boolean
 }
 
  
