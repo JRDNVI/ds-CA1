@@ -63,6 +63,20 @@ export class RestAPIStack extends cdk.Stack {
           REGION: "eu-west-1",
         },
       });
+
+      const updateGameFn = new lambdanode.NodejsFunction(this, "updateGameFn", {
+        architecture: lambda.Architecture.ARM_64,
+        runtime: lambda.Runtime.NODEJS_16_X,
+        entry: `${__dirname}/../lambdas/updateGame.ts`,
+        timeout: cdk.Duration.seconds(10),
+        memorySize: 128,
+        environment: {
+          TABLE_NAME: gamesTable.tableName,
+          REGION: "eu-west-1",
+        },
+      });
+
+
         
         const api = new apig.RestApi(this, "RestAPI", {
           description: "demo api",
@@ -79,19 +93,24 @@ export class RestAPIStack extends cdk.Stack {
 
         gamesTable.grantReadData(getGameByIdFn)
         gamesTable.grantReadWriteData(newGameFn)
+        gamesTable.grantReadWriteData(updateGameFn)
 
         const gamesEndpoint = api.root.addResource("games");
         gamesEndpoint.addMethod(
           "POST",
           new apig.LambdaIntegration(newGameFn, { proxy: true })
-        )
-        
+        );
+        gamesEndpoint.addMethod(
+          "PUT",
+          new apig.LambdaIntegration(updateGameFn, { proxy: true })
+        );
+
         const gameEndpoint = gamesEndpoint.addResource("{gameId}");
         gameEndpoint.addMethod(
           "GET",
           new apig.LambdaIntegration(getGameByIdFn, { proxy: true })
         );
-
+        
         new cdk.CfnOutput(this, "Get Game By ID API URL", {
             value: api.url + "games/{gameId}",
         });

@@ -1,13 +1,13 @@
-export type Language = 'English' | 'French'
+//export type Language = 'English' | 'French'
 
 export type Game = {
-  id: Number,
-  version: Number,
-  title: String,
-  description: String,
-  rating: Number,
-  genre: String,
-  developer: String,
+  id: number,
+  version: number,
+  title: string,
+  description: string,
+  rating: number,
+  genre: string,
+  developer: string,
   adult: boolean
 }
 
