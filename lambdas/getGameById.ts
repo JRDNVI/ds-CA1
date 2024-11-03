@@ -44,7 +44,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {
     if (title && translateLanguage && items) { // If title and translateLanguage are present in the URL, and items isn't empty, continue.
       console.log("Checking for existing translation in TranslationTable...");
       
-      const translationCheckResult = await ddbDocClient.send(
+      const translationCheckResult = await ddbDocClient.send( // Check to see if a translation for an item is already in the translation table.
         new GetCommand({ 
           TableName: process.env.LANG_TABLE_NAME,
           Key: {
@@ -53,7 +53,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {
           }
         }));
 
-      if (translationCheckResult.Item) { 
+      if (translationCheckResult.Item) { // if translationCheckResult.Item is not empty, return the translated item
         console.log("Found existing translation:", translationCheckResult.Item);
         return {
           statusCode: 200,
