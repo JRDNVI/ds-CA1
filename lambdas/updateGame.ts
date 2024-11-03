@@ -17,13 +17,13 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     const title = body.title;
     const id = body.id;
 
-    if (!title) {
+    if (!title || !id) {
       return {
         statusCode: 400,
         headers: {
           "content-type": "application/json",
         },
-        body: JSON.stringify({ message: "Missing title in request body" }),
+        body: JSON.stringify({ message: "Missing title or id in request body" }),
       };
     }
 

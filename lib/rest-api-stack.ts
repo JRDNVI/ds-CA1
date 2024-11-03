@@ -7,6 +7,7 @@ import { Construct } from "constructs";
 import * as apig from "aws-cdk-lib/aws-apigateway";
 import { generateGameBatch } from "../shared/util";
 import { games } from "../seed/games";
+import * as iam from "aws-cdk-lib/aws-iam";
 
 export class RestAPIStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -34,6 +35,11 @@ export class RestAPIStack extends cdk.Stack {
       policy: custom.AwsCustomResourcePolicy.fromSdkCalls({
         resources: [gamesTable.tableArn],
       }),
+    });
+
+    const translatePolicy = new iam.PolicyStatement({ // Create policy statement that allows my AWS account access to AWSTranslate
+      actions: ["translate:TranslateText"],
+      resources: ["*"]
     });
 
     const getGameByIdFn = new lambdanode.NodejsFunction(
@@ -94,6 +100,8 @@ export class RestAPIStack extends cdk.Stack {
         gamesTable.grantReadData(getGameByIdFn)
         gamesTable.grantReadWriteData(newGameFn)
         gamesTable.grantReadWriteData(updateGameFn)
+
+        getGameByIdFn.addToRolePolicy(translatePolicy) // Allow Lamdba function to access AWSTranslate
 
         const gamesEndpoint = api.root.addResource("games");
         gamesEndpoint.addMethod(

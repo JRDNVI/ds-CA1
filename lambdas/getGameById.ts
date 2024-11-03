@@ -1,12 +1,10 @@
 import { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import {
-  DynamoDBDocumentClient,
-  QueryCommand,
-  QueryCommandInput,
-} from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, QueryCommand, QueryCommandInput } from "@aws-sdk/lib-dynamodb";
+import { TranslateClient, TranslateTextCommand } from "@aws-sdk/client-translate";
 
 const ddbDocClient = createDocumentClient();
+const translateClient = new TranslateClient({ region: process.env.REGION });
 
 export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {
   try {
@@ -25,10 +23,11 @@ export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {
     
     const gameId = parseInt(pathParams.gameId);
     const title = event.queryStringParameters?.title;
+    const translateLanguage = event.queryStringParameters?.language;
     
     let commandInput: QueryCommandInput = {
-      TableName: process.env.TABLE_NAME, 
-      KeyConditionExpression: "id = :g", 
+      TableName: process.env.TABLE_NAME,
+      KeyConditionExpression: "id = :g",
       ExpressionAttributeValues: {
         ":g": gameId,
       },
@@ -40,6 +39,20 @@ export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {
     }
 
     const commandOutput = await ddbDocClient.send(new QueryCommand(commandInput));
+    const items = commandOutput.Items
+
+    if (title && translateLanguage && items) { // If title and translateLanguage are present in the URL, and items isn't empty, continue.
+      const translatedItems = await translateAllStringAttributes(items[0], translateLanguage); // Pass the item and target language into function. 
+      return {
+        statusCode: 200,
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          data: translatedItems, // If successful return the translated item
+        }),
+      };
+    }
 
     return {
       statusCode: 200,
@@ -47,7 +60,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        data: commandOutput.Items,
+        data: items,
       }),
     };
   } catch (error: any) {
@@ -61,6 +74,25 @@ export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {
     };
   }
 };
+
+async function translateAllStringAttributes(item: any, language: string) {
+  const translatedAttributes: any = {}; // Used to store new item with translated attributes
+
+  for (const attribute in item) { // loop through each attribute
+    if (typeof item[attribute] === "string") { // if the current attribute is a string, translate it.
+      const command = new TranslateTextCommand({
+        Text: item[attribute], // specify the attribute value to be translated
+        SourceLanguageCode: "en",
+        TargetLanguageCode: language,
+      });
+      const commandOutput = await translateClient.send(command);
+      translatedAttributes[attribute] = commandOutput.TranslatedText;
+    } else {
+      translatedAttributes[attribute] = item[attribute]; // wasn't type string so store back as oringinal value
+    }
+  }
+  return translatedAttributes;
+}
 
 function createDocumentClient() {
   const ddbClient = new DynamoDBClient({ region: process.env.REGION });
