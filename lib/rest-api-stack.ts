@@ -21,6 +21,15 @@ export class RestAPIStack extends cdk.Stack {
       tableName: "Games",
     });
 
+    const TranslationTable = new dynamodb.Table(this, "TranslationTable", {
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      partitionKey: { name: "id", type: dynamodb.AttributeType.NUMBER },
+      sortKey: { name: "title", type: dynamodb.AttributeType.STRING },
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      tableName: "TranslationTable",
+    });
+
+
     new custom.AwsCustomResource(this, "gamesddbInitData", {
       onCreate: {
         service: "DynamoDB",
@@ -53,6 +62,7 @@ export class RestAPIStack extends cdk.Stack {
         memorySize: 128,
         environment: {
           TABLE_NAME: gamesTable.tableName,
+          LANG_TABLE_NAME: TranslationTable.tableName,
           REGION: 'eu-west-1',
         },
       }
@@ -101,6 +111,7 @@ export class RestAPIStack extends cdk.Stack {
         gamesTable.grantReadWriteData(newGameFn)
         gamesTable.grantReadWriteData(updateGameFn)
 
+        TranslationTable.grantReadWriteData(getGameByIdFn)
         getGameByIdFn.addToRolePolicy(translatePolicy) // Allow Lamdba function to access AWSTranslate
 
         const gamesEndpoint = api.root.addResource("games");

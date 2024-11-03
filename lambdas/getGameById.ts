@@ -1,6 +1,6 @@
 import { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, QueryCommand, QueryCommandInput } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, QueryCommand, QueryCommandInput, PutCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
 import { TranslateClient, TranslateTextCommand } from "@aws-sdk/client-translate";
 
 const ddbDocClient = createDocumentClient();
@@ -42,14 +42,48 @@ export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {
     const items = commandOutput.Items
 
     if (title && translateLanguage && items) { // If title and translateLanguage are present in the URL, and items isn't empty, continue.
+      console.log("Checking for existing translation in TranslationTable...");
+      
+      const translationCheckResult = await ddbDocClient.send(
+        new GetCommand({ 
+          TableName: process.env.LANG_TABLE_NAME,
+          Key: {
+            id: gameId,
+            title: title 
+          }
+        }));
+
+      if (translationCheckResult.Item) { 
+        console.log("Found existing translation:", translationCheckResult.Item);
+        return {
+          statusCode: 200,
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            data: translationCheckResult.Item,
+          }),
+        };
+      }
+      
+      console.log("No existing translation found");
+
       const translatedItems = await translateAllStringAttributes(items[0], translateLanguage); // Pass the item and target language into function. 
+      console.log("Storing new translation in TranslationTable...");
+      await ddbDocClient.send(
+        new PutCommand({
+          TableName: process.env.LANG_TABLE_NAME,
+          Item: translatedItems
+      })
+    );
+
       return {
         statusCode: 200,
         headers: {
           "content-type": "application/json",
         },
         body: JSON.stringify({
-          data: translatedItems, // If successful return the translated item
+          data: translatedItems,
         }),
       };
     }
@@ -79,7 +113,7 @@ async function translateAllStringAttributes(item: any, language: string) {
   const translatedAttributes: any = {}; // Used to store new item with translated attributes
 
   for (const attribute in item) { // loop through each attribute
-    if (typeof item[attribute] === "string") { // if the current attribute is a string, translate it.
+    if (typeof item[attribute] === "string") { // if the current attribute value is a string, translate it.
       const command = new TranslateTextCommand({
         Text: item[attribute], // specify the attribute value to be translated
         SourceLanguageCode: "en",
