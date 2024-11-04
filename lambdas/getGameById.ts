@@ -71,8 +71,8 @@ export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {
         new GetCommand({ 
           TableName: process.env.LANG_TABLE_NAME,
           Key: {
-            id: gameId,
-            title: title 
+            title: title,
+            lang: translateLanguage,
           }
         }));
 
@@ -92,6 +92,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {
       console.log("No existing translation found");
 
       const translatedItems = await translateAllStringAttributes(items[0], translateLanguage); // Pass the item and target language into function. 
+      translatedItems.lang = translateLanguage
       console.log("Storing new translation in TranslationTable...");
       await ddbDocClient.send(
         new PutCommand({

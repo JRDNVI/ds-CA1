@@ -28,8 +28,8 @@ export class RestAPIStack extends Construct {
 
     const TranslationTable = new dynamodb.Table(this, "TranslationTable", {
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      partitionKey: { name: "id", type: dynamodb.AttributeType.NUMBER },
-      sortKey: { name: "title", type: dynamodb.AttributeType.STRING },
+      partitionKey: { name: "title", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "lang", type: dynamodb.AttributeType.STRING },
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       tableName: "TranslationTable",
     });
