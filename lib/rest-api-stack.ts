@@ -56,46 +56,54 @@ export class RestAPIStack extends Construct {
       resources: ["*"]
     });
 
-    const getGameByIdFn = new lambdanode.NodejsFunction(
-      this,
-      "GetGameByIdFn",
+    const appCommonFnProps = {
+      architecture: lambda.Architecture.ARM_64,
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 128,
+      runtime: lambda.Runtime.NODEJS_16_X,
+      handler: "handler",
+      environment: {
+        TABLE_NAME: gamesTable.tableName,
+        USER_POOL_ID: props.userPoolId,
+        CLIENT_ID: props.userPoolClientId,
+        REGION: cdk.Aws.REGION,
+      },
+    };
+
+    const getGameByIdFn = new lambdanode.NodejsFunction(this, "GetGameByIdFn",
       {
-        architecture: lambda.Architecture.ARM_64,
-        runtime: lambda.Runtime.NODEJS_18_X,
+        ...appCommonFnProps,
         entry: `${__dirname}/../lambdas/getGameById.ts`,
-        timeout: cdk.Duration.seconds(10),
-        memorySize: 128,
         environment: {
-          TABLE_NAME: gamesTable.tableName,
+          ...appCommonFnProps.environment,
           LANG_TABLE_NAME: TranslationTable.tableName,
-          REGION: 'eu-west-1',
         },
-      }
-      );
+      });
 
       const newGameFn = new lambdanode.NodejsFunction(this, "AddGameFn", {
-        architecture: lambda.Architecture.ARM_64,
-        runtime: lambda.Runtime.NODEJS_16_X,
+        ...appCommonFnProps,
         entry: `${__dirname}/../lambdas/addGame.ts`,
-        timeout: cdk.Duration.seconds(10),
-        memorySize: 128,
-        environment: {
-          TABLE_NAME: gamesTable.tableName,
-          REGION: "eu-west-1",
-        },
       });
 
       const updateGameFn = new lambdanode.NodejsFunction(this, "updateGameFn", {
-        architecture: lambda.Architecture.ARM_64,
-        runtime: lambda.Runtime.NODEJS_16_X,
+        ...appCommonFnProps,
         entry: `${__dirname}/../lambdas/updateGame.ts`,
-        timeout: cdk.Duration.seconds(10),
-        memorySize: 128,
-        environment: {
-          TABLE_NAME: gamesTable.tableName,
-          REGION: "eu-west-1",
-        },
       });
+
+      const authorizerFn = new lambdanode.NodejsFunction(this, "AuthorizerFn", {
+        ...appCommonFnProps,
+        entry: `${__dirname}/../lambdas/auth/authorizer.ts`,
+      });
+
+      const requestAuthorizer = new apig.RequestAuthorizer(
+        this,
+        "RequestAuthorizer",
+        {
+          identitySources: [apig.IdentitySource.header("cookie")],
+          handler: authorizerFn,
+          resultsCacheTtl: cdk.Duration.minutes(0),
+        }
+      );
         
         const api = new apig.RestApi(this, "RestAPI", {
           description: "demo api",
@@ -113,28 +121,38 @@ export class RestAPIStack extends Construct {
         gamesTable.grantReadData(getGameByIdFn)
         gamesTable.grantReadWriteData(newGameFn)
         gamesTable.grantReadWriteData(updateGameFn)
-
         TranslationTable.grantReadWriteData(getGameByIdFn)
         getGameByIdFn.addToRolePolicy(translatePolicy) // Allow Lamdba function to access AWSTranslate
+
+
 
         const gamesEndpoint = api.root.addResource("games");
         gamesEndpoint.addMethod(
           "POST",
-          new apig.LambdaIntegration(newGameFn, { proxy: true })
+          new apig.LambdaIntegration(newGameFn, { proxy: true }),
+          {
+            authorizer: requestAuthorizer,
+            authorizationType: apig.AuthorizationType.CUSTOM,
+          }
         );
         gamesEndpoint.addMethod(
           "PUT",
-          new apig.LambdaIntegration(updateGameFn, { proxy: true })
+          new apig.LambdaIntegration(updateGameFn, { proxy: true }),
+          {
+            authorizer: requestAuthorizer,
+            authorizationType: apig.AuthorizationType.CUSTOM,
+          }
         );
-
+    
+        // Public GET request
         const gameEndpoint = gamesEndpoint.addResource("{gameId}");
         gameEndpoint.addMethod(
           "GET",
           new apig.LambdaIntegration(getGameByIdFn, { proxy: true })
         );
-        
+    
         new cdk.CfnOutput(this, "Get Game By ID API URL", {
-            value: api.url + "games/{gameId}",
+          value: api.url + "games/{gameId}",
         });
       }
     }
