@@ -2,6 +2,13 @@ import { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, QueryCommand, QueryCommandInput, PutCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
 import { TranslateClient, TranslateTextCommand } from "@aws-sdk/client-translate";
+import Ajv from "ajv";
+import schema from "../shared/types.schema.json";
+
+const ajv = new Ajv();
+const isValidQueryParams = ajv.compile(
+  schema.definitions["GameQueryParams"] || {}
+);
 
 const ddbDocClient = createDocumentClient();
 const translateClient = new TranslateClient({ region: process.env.REGION });
@@ -10,18 +17,34 @@ export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {
   try {
     console.log("Event: ", JSON.stringify(event));
     
-    const pathParams = event.pathParameters;
-    if (!pathParams || !pathParams.gameId) {
+    const pathParams = event?.pathParameters;
+    const gameId = pathParams?.gameId ? parseInt(pathParams.gameId) : undefined;
+
+    if (!gameId) {
       return {
         statusCode: 400,
         headers: {
           "content-type": "application/json",
         },
-        body: JSON.stringify({ message: "Missing gameId path parameter" }),
+        body: JSON.stringify({ message: "Missing game Id " }),
+      };
+    }
+
+    const queryParams = event?.queryStringParameters || {}
+
+    if (!isValidQueryParams(queryParams)) {
+      return {
+        statusCode: 500,
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          message: `Incorrect type. Must match Query parameters schema`,
+          schema: schema.definitions["GameQueryParams"],
+        }),
       };
     }
     
-    const gameId = parseInt(pathParams.gameId);
     const title = event.queryStringParameters?.title;
     const translateLanguage = event.queryStringParameters?.language;
     

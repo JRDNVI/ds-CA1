@@ -11,6 +11,11 @@ export type Game = {
   adult: boolean
 }
 
+export type GameQueryParams = {
+  title?: string
+  language?: string
+}
+
 export type ConfirmSignUpBody = {
   username: string;
   code: string;

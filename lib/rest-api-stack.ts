@@ -70,8 +70,7 @@ export class RestAPIStack extends Construct {
       },
     };
 
-    const getGameByIdFn = new lambdanode.NodejsFunction(this, "GetGameByIdFn",
-      {
+    const getGameByIdFn = new lambdanode.NodejsFunction(this, "GetGameByIdFn", {
         ...appCommonFnProps,
         entry: `${__dirname}/../lambdas/getGameById.ts`,
         environment: {
@@ -125,20 +124,16 @@ export class RestAPIStack extends Construct {
         getGameByIdFn.addToRolePolicy(translatePolicy) // Allow Lamdba function to access AWSTranslate
 
 
-
+        // Private POST and Get requests
         const gamesEndpoint = api.root.addResource("games");
-        gamesEndpoint.addMethod(
-          "POST",
-          new apig.LambdaIntegration(newGameFn, { proxy: true }),
-          {
+
+        gamesEndpoint.addMethod("POST", new apig.LambdaIntegration(newGameFn, { proxy: true }), {
             authorizer: requestAuthorizer,
             authorizationType: apig.AuthorizationType.CUSTOM,
           }
         );
-        gamesEndpoint.addMethod(
-          "PUT",
-          new apig.LambdaIntegration(updateGameFn, { proxy: true }),
-          {
+
+        gamesEndpoint.addMethod("PUT", new apig.LambdaIntegration(updateGameFn, { proxy: true }), {
             authorizer: requestAuthorizer,
             authorizationType: apig.AuthorizationType.CUSTOM,
           }
@@ -146,10 +141,8 @@ export class RestAPIStack extends Construct {
     
         // Public GET request
         const gameEndpoint = gamesEndpoint.addResource("{gameId}");
-        gameEndpoint.addMethod(
-          "GET",
-          new apig.LambdaIntegration(getGameByIdFn, { proxy: true })
-        );
+
+        gameEndpoint.addMethod( "GET", new apig.LambdaIntegration(getGameByIdFn, { proxy: true }));
     
         new cdk.CfnOutput(this, "Get Game By ID API URL", {
           value: api.url + "games/{gameId}",
