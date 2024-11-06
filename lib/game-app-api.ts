@@ -14,7 +14,7 @@ type AppApiProps = {
   userPoolClientId: string;
 };
 
-export class RestAPIStack extends Construct {
+export class GameAppApi extends Construct {
   constructor(scope: Construct, id: string, props: AppApiProps) {
     super(scope, id);
 
@@ -60,7 +60,7 @@ export class RestAPIStack extends Construct {
       architecture: lambda.Architecture.ARM_64,
       timeout: cdk.Duration.seconds(10),
       memorySize: 128,
-      runtime: lambda.Runtime.NODEJS_16_X,
+      runtime: lambda.Runtime.NODEJS_18_X,
       handler: "handler",
       environment: {
         TABLE_NAME: gamesTable.tableName,
@@ -69,6 +69,11 @@ export class RestAPIStack extends Construct {
         REGION: cdk.Aws.REGION,
       },
     };
+
+    const getAllGamesFn = new lambdanode.NodejsFunction(this, "GetAllGamesFn", {
+      ...appCommonFnProps,
+      entry: `${__dirname}/../lambdas/GetAllGames.ts`,
+    });
 
     const getGameByIdFn = new lambdanode.NodejsFunction(this, "GetGameByIdFn", {
         ...appCommonFnProps,
@@ -117,6 +122,7 @@ export class RestAPIStack extends Construct {
           },
         });
 
+        gamesTable.grantReadData(getAllGamesFn)
         gamesTable.grantReadData(getGameByIdFn)
         gamesTable.grantReadWriteData(newGameFn)
         gamesTable.grantReadWriteData(updateGameFn)
@@ -128,26 +134,21 @@ export class RestAPIStack extends Construct {
         const gamesEndpoint = api.root.addResource("games");
 
         gamesEndpoint.addMethod("POST", new apig.LambdaIntegration(newGameFn, { proxy: true }), {
-            authorizer: requestAuthorizer,
-            authorizationType: apig.AuthorizationType.CUSTOM,
-          }
-        );
-
-        gamesEndpoint.addMethod("PUT", new apig.LambdaIntegration(updateGameFn, { proxy: true }), 
-        {
-            authorizer: requestAuthorizer,
-            authorizationType: apig.AuthorizationType.CUSTOM,
-          }
-        );
-    
-        // Public GET request
-        const gameEndpoint = gamesEndpoint.addResource("{gameId}");
-
-        gameEndpoint.addMethod( "GET", new apig.LambdaIntegration(getGameByIdFn, { proxy: true }));
-    
-        new cdk.CfnOutput(this, "Get Game By ID API URL", {
-          value: api.url + "games/{gameId}",
+          authorizer: requestAuthorizer,
+          authorizationType: apig.AuthorizationType.CUSTOM,
         });
+        
+        gamesEndpoint.addMethod("PUT", new apig.LambdaIntegration(updateGameFn, { proxy: true }), {
+          authorizer: requestAuthorizer,
+          authorizationType: apig.AuthorizationType.CUSTOM,
+        });
+        
+        // Public GET requests
+        const gameEndpoint = gamesEndpoint.addResource("{gameId}");
+        gameEndpoint.addMethod("GET", new apig.LambdaIntegration(getGameByIdFn, { proxy: true }));
+        
+        gamesEndpoint.addMethod( "GET", new apig.LambdaIntegration(getAllGamesFn, { proxy: true }));
+      
       }
     }
     
