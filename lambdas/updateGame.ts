@@ -6,10 +6,28 @@ import {
   UpdateCommand,
   UpdateCommandInput,
 } from "@aws-sdk/lib-dynamodb";
+import {
+  CookieMap,
+  createPolicy,
+  JwtToken,
+  parseCookies,
+  verifyToken,
+} from "../lambdas/utils.ts"
 
 const ddbDocClient = createDocumentClient();
 
-export const handler: APIGatewayProxyHandlerV2 = async (event) => {
+export const handler: APIGatewayProxyHandlerV2 = async (event: any) => {
+
+  const cookies: CookieMap = parseCookies(event) || {}
+
+  const verifiedJwt: JwtToken = await verifyToken(
+    cookies.token,
+    process.env.USER_POOL_ID,
+    process.env.REGION!
+  );
+
+  const userId = verifiedJwt?.sub;
+
   try {
     console.log("Event: ", JSON.stringify(event));
 
@@ -27,6 +45,25 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       };
     }
 
+    const commandOutput = await ddbDocClient.send(
+      new GetCommand({
+        TableName: process.env.TABLE_NAME,
+        Key: { id, title }
+      })
+    )
+
+    const oldBody = commandOutput.Item || {}
+
+    if (oldBody.userId !== userId) {
+      return {
+        statusCode: 403,
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ message: "Unauthorized: You can't update an item that you didn't add!" }),
+      };
+    }
+
     const updateCommandInput: UpdateCommandInput = {
       TableName: process.env.TABLE_NAME,
       Key: { id, title },
@@ -40,12 +77,12 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         "#adult": "adult",
       },
       ExpressionAttributeValues: {
-        ":version": body.version,
-        ":description": body.description,
-        ":rating": body.rating,
-        ":developer": body.developer,
-        ":genre": body.genre,
-        ":adult": body.adult,
+        ":version": body.version !== undefined ? body.version : oldBody?.version,
+        ":description": body.description !== undefined ? body.description : oldBody?.description,
+        ":rating": body.rating !== undefined ? body.rating : oldBody?.rating,
+        ":developer": body.developer !== undefined ? body.developer : oldBody?.developer,
+        ":genre": body.genre !== undefined ? body.genre : oldBody?.genre,
+        ":adult": body.adult !== undefined ? body.adult : oldBody?.adult,
       },
     };
 

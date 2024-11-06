@@ -133,7 +133,8 @@ export class RestAPIStack extends Construct {
           }
         );
 
-        gamesEndpoint.addMethod("PUT", new apig.LambdaIntegration(updateGameFn, { proxy: true }), {
+        gamesEndpoint.addMethod("PUT", new apig.LambdaIntegration(updateGameFn, { proxy: true }), 
+        {
             authorizer: requestAuthorizer,
             authorizationType: apig.AuthorizationType.CUSTOM,
           }

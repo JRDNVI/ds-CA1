@@ -4,12 +4,34 @@ import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
 import Ajv from "ajv";
 import schema from "../shared/types.schema.json";
 
+import {
+  CookieMap,
+  createPolicy,
+  JwtToken,
+  parseCookies,
+  verifyToken,
+} from "../lambdas/utils.ts"
+
+
 const ajv = new Ajv();
 const isValidBodyParams = ajv.compile(schema.definitions["Game"] || {});
 
+
+
 const ddbDocClient = createDDbDocClient();
 
-export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {
+export const handler: APIGatewayProxyHandlerV2 = async (event: any, context) => {
+
+  const cookies: CookieMap = parseCookies(event) || {}
+
+  const verifiedJwt: JwtToken = await verifyToken(
+    cookies.token,
+    process.env.USER_POOL_ID,
+    process.env.REGION!
+  );
+
+  const userId = verifiedJwt?.sub;
+
   try {
     console.log("[EVENT]", JSON.stringify(event));
     const body = event.body ? JSON.parse(event.body) : undefined;
@@ -36,10 +58,15 @@ export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {
         };
       }
 
+      const item = {
+        ...body,
+        userId
+      }
+
     const commandOutput = await ddbDocClient.send(
       new PutCommand({
         TableName: process.env.TABLE_NAME,
-        Item: body,
+        Item: item,
       })
     );
     return {
