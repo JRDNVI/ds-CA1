@@ -4,33 +4,15 @@ import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
 import Ajv from "ajv";
 import schema from "../shared/types.schema.json";
 
-import {
-  CookieMap,
-  createPolicy,
-  JwtToken,
-  parseCookies,
-  verifyToken,
-} from "../lambdas/utils.ts"
-
-
 const ajv = new Ajv();
 const isValidBodyParams = ajv.compile(schema.definitions["Game"] || {});
-
-
-
 const ddbDocClient = createDDbDocClient();
 
 export const handler: APIGatewayProxyHandlerV2 = async (event: any, context) => {
 
-  const cookies: CookieMap = parseCookies(event) || {}
+  const userId = event.requestContext.authorizer?.principalId; // Found by looking at event in CloudWatch Logs
 
-  const verifiedJwt: JwtToken = await verifyToken(
-    cookies.token,
-    process.env.USER_POOL_ID,
-    process.env.REGION!
-  );
-
-  const userId = verifiedJwt?.sub;
+  console.log("User ID:", userId);
 
   try {
     console.log("[EVENT]", JSON.stringify(event));

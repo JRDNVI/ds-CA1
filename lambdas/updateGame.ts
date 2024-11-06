@@ -6,27 +6,12 @@ import {
   UpdateCommand,
   UpdateCommandInput,
 } from "@aws-sdk/lib-dynamodb";
-import {
-  CookieMap,
-  createPolicy,
-  JwtToken,
-  parseCookies,
-  verifyToken,
-} from "../lambdas/utils.ts"
 
 const ddbDocClient = createDocumentClient();
 
 export const handler: APIGatewayProxyHandlerV2 = async (event: any) => {
 
-  const cookies: CookieMap = parseCookies(event) || {}
-
-  const verifiedJwt: JwtToken = await verifyToken(
-    cookies.token,
-    process.env.USER_POOL_ID,
-    process.env.REGION!
-  );
-
-  const userId = verifiedJwt?.sub;
+  const userId = event.requestContext.authorizer?.principalId
 
   try {
     console.log("Event: ", JSON.stringify(event));
