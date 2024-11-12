@@ -49,7 +49,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event: any) => {
       };
     }
 
-    const updateCommandInput: UpdateCommandInput = {
+    const updateCommandInput: UpdateCommandInput = { // Better
       TableName: process.env.TABLE_NAME,
       Key: { id, title },
       UpdateExpression: "SET #version = :version, #description = :description, #rating = :rating, #developer = :developer, #genre = :genre, #adult = :adult",

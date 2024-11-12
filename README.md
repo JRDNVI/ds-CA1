@@ -2,7 +2,7 @@
 
 __Name:__ Jordon Coady
 
-__Demo:__ ... link to your YouTube video demonstration ......
+__Demo:__ [YouTube video demonstration](https://www.youtube.com/watch?v=X1FOX5Vpl_k)
 
 ### Context.
 
@@ -32,22 +32,22 @@ classDiagram
 
 ### App API endpoints.
 
-- Protected
+#### Protected
 + POST /games - Add a new game 
 + PUT /games - Update an existing game 
 
-- Public 
+#### Public 
 + GET /games/{gameId} - Retrieve a game collection by gameId.
 + GET /games/{gameId}?title=value - Retrieve a game collection then filter them by game title.
 + GET /games/{gameId}?title=value&language=value - Retrieve a game collection then filter them by game title and translate returned item by specfied language.
 + GET /games - Retrieve all games in the database.
 
-### Update constraint (if relevant).
+### Update constraint
 
 - When a user adds a game their principalId is stored in the database with the item as an extra attribute.
 - When a user tries to update an item a check is done to see if the principalId stored in the item matches the user trying to update that item. 
 
-### Translation persistence (if relevant).
+### Translation persistence
 
 - When the URL matches exactly with /games/{gameId}?title=value&language=value only then will a translation occur. I did this way to avoid excssive translations i.e., not translation entire collection just an item from a collection.
 
@@ -56,8 +56,4 @@ classDiagram
 - If it hasn't been translated, pass the item and language to a function which will loop through each attribute and check if the type is string, if it is, use the TranslateTextCommand to translate it and store it as the new attribute value. if it isn't keep the original value. The function will return the translated item.
 
 - Then the translated item will be stored in the translation table using the PutCommand, with the added attribute of language.
-
-###  Extra (If relevant).
-
-[ State whether you have created a multi-stack solution for this assignment or used lambda layers to speed up update deployments. Also, mention any aspect of the CDK framework __that was not covered in the lectures that you used in this assignment. ]
 

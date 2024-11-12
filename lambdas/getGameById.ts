@@ -137,7 +137,7 @@ async function translateAllStringAttributes(item: any, language: string) {
   const translatedAttributes: any = {}; // Used to store new item with translated attributes
 
   for (const attribute in item) { // loop through each attribute
-    if (typeof item[attribute] === "string") { // if the current attribute value is a string, translate it.
+    if (typeof item[attribute] === "string" && attribute !== "title") { // if the current attribute value is a string and the current attribute isn't title, translate it.
       const command = new TranslateTextCommand({
         Text: item[attribute], // specify the attribute value to be translated
         SourceLanguageCode: "en",

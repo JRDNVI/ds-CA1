@@ -148,7 +148,6 @@ export class GameAppApi extends Construct {
         gameEndpoint.addMethod("GET", new apig.LambdaIntegration(getGameByIdFn, { proxy: true }));
         
         gamesEndpoint.addMethod( "GET", new apig.LambdaIntegration(getAllGamesFn, { proxy: true }));
-      
       }
     }
     
