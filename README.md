@@ -11,14 +11,14 @@ I choose to use game collections as my context. Every game belongs to a series o
 ```mermaid
 classDiagram
     class Game {
-        int id
-        int version
+        number id
+        number version
         string title
         string description
-        float rating
+        number rating
         string genre
         string developer
-        bool adult
+        boolean adult
     }
 ```
 - id: This is the partion key and signfies which games belong to the same series or collection.
